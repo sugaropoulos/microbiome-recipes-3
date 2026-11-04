@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Προσαρμογή συνταγών</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=GFS+Didot&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="wrap" lang="el">
+  <header class="top">
+    <h1>Αναφορά μικροβιώματος → προσαρμογή συνταγών</h1>
+    <p class="lede">Ανεβάστε την αναφορά μικροβιώματος (PDF). Οι πίνακες «Τροφές προς προτίμηση» και «Τροφές προς μείωση» διαβάζονται αυτόματα και κάθε συνταγή ελέγχεται υλικό προς υλικό, με προτάσεις αντικατάστασης από τη λίστα προτίμησης.</p>
+  </header>
+
+  <section class="intake" aria-label="Αναφορά">
+    <div class="drop" id="drop">
+      <span class="eyebrow">Βήμα 1 · Αναφορά</span>
+      <h3>Ανεβάστε την αναφορά μικροβιώματος</h3>
+      <p class="muted">PDF με πίνακα διατροφικών συμβουλών (π.χ. The BioArte). Το αρχείο διαβάζεται μόνο μέσα στον browser σας και δεν αποστέλλεται πουθενά.</p>
+      <div class="row">
+        <label class="btn primary" for="pdfInput">Επιλογή PDF</label>
+        <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden>
+        <span class="muted" style="font-size:.88rem">ή σύρετέ το εδώ</span>
+      </div>
+      <div id="pdfMsg" hidden></div>
+    </div>
+    <div class="source" aria-live="polite">
+      <span class="eyebrow">Τρέχουσα ανάλυση</span>
+      <span class="badge" id="srcBadge"></span>
+      <div class="stats">
+        <div class="stat"><b id="stPrefer">0</b><span>τροφές προς προτίμηση</span></div>
+        <div class="stat"><b id="stReduce">0</b><span>τροφές προς μείωση</span></div>
+        <div class="stat"><b id="stRecipes">0</b><span>συνταγές</span></div>
+      </div>
+      <p class="muted" style="font-size:.84rem" id="recSrc"></p>
+      <div class="row" style="display:flex;flex-wrap:wrap;gap:8px">
+        <label class="btn ghost" for="xlsxInput" style="font-size:.85rem">Αντικατάσταση συνταγών (.xlsx)</label>
+        <input type="file" id="xlsxInput" accept=".xlsx" hidden>
+      </div>
+      <div id="xlsxMsg" hidden></div>
+    </div>
+  </section>
+
+  <section class="empty-state" id="emptyState">
+    <h3>Δεν έχει φορτωθεί αναφορά</h3>
+    <p class="muted">Παρακάτω εμφανίζονται οι <span id="emptyCount">0</span> συνταγές όπως είναι. Μόλις ανεβάσετε το PDF, κάθε συνταγή ελέγχεται με τους πίνακες τροφών της αναφοράς και εμφανίζονται οι προτεινόμενες αλλαγές.</p>
+  </section>
+
+  <details class="lists" id="lists" hidden>
+    <summary>
+      <h2>Τι βρέθηκε στην αναφορά</h2>
+      <span class="muted" id="listsSummary"></span>
+      <span class="chev"><span class="closed">Εμφάνιση πινάκων ▾</span><span class="opened">Απόκρυψη ▴</span></span>
+    </summary>
+    <div class="superfoods" id="superfoods" hidden></div>
+    <div class="cols">
+      <div class="col prefer"><div class="col-head"><span class="sw"></span><h3>Τροφές προς προτίμηση</h3></div><div id="preferList" class="cat-list"></div></div>
+      <div class="col reduce"><div class="col-head"><span class="sw"></span><h3>Τροφές προς μείωση</h3></div><p class="muted" style="font-size:.82rem">Ο αριθμός δείχνει σε πόσες συνταγές εμφανίζεται· πατήστε για φιλτράρισμα.</p><div id="reduceList" class="cat-list"></div></div>
+    </div>
+  </details>
+
+  <section aria-labelledby="recH" id="recSection" style="display:grid;gap:14px">
+    <div class="rec-head">
+      <div style="display:grid;gap:4px">
+        <span class="eyebrow">Βήμα 2 · Συνταγές</span>
+        <h2 id="recH">Συνταγές</h2>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="exportBtn" type="button" hidden>Εξαγωγή σε Excel</button>
+        <button class="btn" id="copyTsvBtn" type="button" hidden>Αντιγραφή πίνακα αλλαγών</button>
+      </div>
+    </div>
+    <div class="tiles" role="group" aria-label="Κατάσταση συνταγών" id="tiles"></div>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Αναζήτηση συνταγής ή υλικού…" aria-label="Αναζήτηση">
+      <select id="srcSel" aria-label="Πηγή"></select>
+      <select id="cat" aria-label="Κατηγορία"></select>
+      <select id="sort" aria-label="Ταξινόμηση">
+        <option value="fit">Λιγότερες αλλαγές πρώτα</option>
+        <option value="prefer">Περισσότερες τροφές προτίμησης</option>
+        <option value="alpha">Αλφαβητικά</option>
+      </select>
+      <label class="toggle" id="showPosWrap"><input type="checkbox" id="showPos" checked> Πιθανές αντιστοιχίσεις</label>
+    </div>
+    <div class="toolbar"><span class="count-line" id="countLine"></span><span id="foodFilter"></span></div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <footer class="fine">
+    <p>Οι αντιστοιχίσεις γίνονται με λεξικό τροφίμων στα ελληνικά. «Πιθανό» σημαίνει ότι το υλικό δεν προσδιορίζεται αρκετά (π.χ. «τυρί», «φασόλια») και χρειάζεται έλεγχο.</p>
+    <p>Οι προτάσεις αντικατάστασης αντλούνται από τη λίστα προτίμησης της αναφοράς· όσες σημειώνονται «ουδέτερο» δεν αναφέρονται σε καμία λίστα. Όπως σημειώνει και η αναφορά, οι αλλαγές χρειάζονται έγκριση από διατροφολόγο ή επαγγελματία υγείας.</p>
+  </footer>
+</div>
+
+<aside class="tray" id="tray" hidden aria-label="Επιλεγμένες συνταγές">
+  <div class="tray-in">
+    <div class="tray-panel" id="trayPanel" hidden>
+      <div class="tray-groups" id="trayGroups"></div>
+      <div class="tray-fields">
+        <label for="docFor">Για (συμπληρώνεται από την αναφορά· μπορείτε να το αλλάξετε)<input type="text" id="docFor" autocomplete="off"></label>
+        <button type="button" class="btn ghost" id="trayClear">Καθαρισμός επιλογών</button>
+      </div>
+    </div>
+    <div class="tray-bar">
+      <div class="tray-sum"><b id="trayTotal"></b><span id="trayCounts"></span></div>
+      <div class="tray-actions">
+        <button type="button" class="btn" id="trayToggle" aria-expanded="false" aria-controls="trayPanel">Επιλογές ▴</button>
+        <button type="button" class="btn" id="trayPreview">Προεπισκόπηση</button>
+        <button type="button" class="btn primary" id="trayExport">Εξαγωγή PDF</button>
+      </div>
+    </div>
+    <div class="tray-msg" id="trayMsg" hidden></div>
+  </div>
+</aside>
+
+<div class="preview" id="preview" hidden role="dialog" aria-modal="true" aria-label="Προεπισκόπηση εγγράφου">
+  <div class="preview-bar"><button type="button" class="btn primary" id="previewExport">Εξαγωγή PDF</button><button type="button" class="btn" id="previewClose">Κλείσιμο</button></div>
+  <div class="preview-pages" id="previewSheet"></div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/food-dictionary.js"></script>
+<script src="js/matching.js"></script>
+<script src="js/report-parser.js"></script>
+<script src="data/recipes.js"></script>
+<script src="js/pdf-fonts.js"></script>
+<script src="js/app.js"></script>
+<script src="js/selection.js"></script>
+<script src="js/pdf-export.js"></script>
+<script src="js/events.js"></script>
+<script src="js/upload.js"></script>
+<script src="js/excel-export.js"></script>
+<script src="js/ai-rewrite.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
